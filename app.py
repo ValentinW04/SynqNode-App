@@ -287,11 +287,14 @@ col_imp, col_dat = st.columns(2)
 with col_imp:
     with st.expander("Impressum"):
         st.markdown("""
-        **Angaben gemäß § 5 TMG:** [Dein Vor- und Nachname]  
-        [Deine Straße und Hausnummer]  
-        [Deine PLZ und Ort, z.B. 76131 Karlsruhe]  
+        **Impressum**  
+        Angaben gemäß § 5 TMG:
         
-        **Kontakt:** E-Mail: [Deine E-Mail-Adresse]  
+        **Name:** Valentin Weiss  
+        **Adresse:** Klosestraße 13, 76137 Karlsruhe  
+        
+        **Kontakt:**  
+        E-Mail: valentin_weiss@gmx.de  
         """)
 
 with col_dat:
