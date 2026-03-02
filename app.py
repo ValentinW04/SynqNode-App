@@ -273,3 +273,35 @@ if "llms_txt_content" in st.session_state and "products_json_content" in st.sess
             key="download_products",
             type="primary"
         )
+# --- FOOTER & RECHTLICHES ---
+st.write("---")
+st.markdown("""
+<div style='text-align: center; color: #888; font-size: 0.85rem; line-height: 1.5; margin-bottom: 1rem;'>
+    SynqNode AI Visibility Infrastructure
+</div>
+""", unsafe_allow_html=True)
+
+# Wir nutzen Expander, damit die Texte das Design nicht stören, aber rechtlich vorhanden sind
+col_imp, col_dat = st.columns(2)
+
+with col_imp:
+    with st.expander("Impressum"):
+        st.markdown("""
+        **Angaben gemäß § 5 TMG:** [Dein Vor- und Nachname]  
+        [Deine Straße und Hausnummer]  
+        [Deine PLZ und Ort, z.B. 76131 Karlsruhe]  
+        
+        **Kontakt:** E-Mail: [Deine E-Mail-Adresse]  
+        """)
+
+with col_dat:
+    with st.expander("Datenschutz"):
+        st.markdown("""
+        **Datenschutzerklärung (Kurzfassung)** Wir nehmen den Schutz Ihrer Daten ernst. Diese App wird über Streamlit Community Cloud gehostet. 
+        Bei der Nutzung unseres Scanners verarbeiten wir die von Ihnen eingegebene URL. 
+        Die Inhalte der Ziel-URL werden über externe Dienstleister (Jina AI) ausgelesen und über die 
+        API von OpenAI in strukturierte Datenformate übersetzt. Wir speichern die generierten Ergebnisse 
+        (JSON/TXT) nicht dauerhaft auf unseren Servern, sondern stellen sie Ihnen lediglich zum direkten Download zur Verfügung.
+        
+        *[Hier den ausführlichen Text aus dem eRecht24-Generator einfügen]*
+        """)
