@@ -239,7 +239,7 @@ if generate_pressed:
                 # --- Step 1 ---
                 status.update(label="01 / INGEST: Analyzing base domain architecture...", state="running")
                 jina_url = f"https://r.jina.ai/{url_input}"
-                response = requests.get(jina_url)
+                response = requests.get(jina_url, headers={"X-No-Cache": "true"})
                 response.raise_for_status()
                 base_text = response.text
                 
@@ -255,8 +255,12 @@ if generate_pressed:
                     # --- Step 2 ---
                     status.update(label="02 / SCOUT: Identifying commercial endpoints...", state="running")
                     
-                    scout_system_prompt = """You are a web routing assistant. Look at this list of URLs. Select a maximum of 6 URLs strictly necessary to understand products, services, pricing, and segments. Prioritize '/agencies', '/enterprise', '/pricing'. Return ONLY a JSON array of selected URL strings. No markdown."""
-                    scout_user_prompt = f"Internal URLs:\n{json.dumps(internal_links, indent=2)}\n\nSelect up to 6 critical URLs."
+                    scout_system_prompt = """You are a web routing assistant. Select a maximum of 10 URLs strictly necessary to understand products, services, pricing, and segments. 
+CRITICAL RULES:
+1. Prioritize commercial endpoints like '/preise', '/tarife', '/pakete', '/pricing', '/agencies', '/enterprise', '/funktionen'.
+2. LANGUAGE & DEDUPLICATION AVOIDANCE: If the website is multilingual, STRICTLY stick to ONE language path (prefer the primary language, usually German if '.de' or if German paths exist). DO NOT select both '/preise' and '/en/pricing'. Avoid any redundant URLs that serve the exact same purpose in a different language or region.
+Return ONLY a JSON array of selected URL strings. No markdown."""
+                    scout_user_prompt = f"Internal URLs:\n{json.dumps(internal_links, indent=2)}\n\nSelect up to 10 critical URLs."
                     
                     scout_completion = client.chat.completions.create(
                         model="gpt-4o-mini",
@@ -277,7 +281,7 @@ if generate_pressed:
                         selected_urls = json.loads(scout_response)
                         if not isinstance(selected_urls, list):
                             selected_urls = []
-                        selected_urls = [urljoin(url_input, url) for url in selected_urls[:6]]
+                        selected_urls = [urljoin(url_input, url) for url in selected_urls[:10]]
                         status.write(f"Prioritized endpoints: {', '.join(selected_urls)}")
                     except json.JSONDecodeError:
                         status.write("Warning: Failed to parse Scout response. Proceeding with base architecture.")
@@ -294,7 +298,7 @@ if generate_pressed:
                     status.write(f"Synchronizing endpoint {i}/{len(urls_to_crawl)-1}: {url}...")
                     time.sleep(2)
                     try:
-                        resp = requests.get(f"https://r.jina.ai/{url}")
+                        resp = requests.get(f"https://r.jina.ai/{url}", headers={"X-No-Cache": "true"})
                         resp.raise_for_status()
                         aggregated_text += f"\n\n--- Content from {url} ---\n\n{resp.text}"
                     except Exception as e:
@@ -308,15 +312,22 @@ Generate two items from the content:
 1. `llms_txt`: A markdown string explaining company structure, offerings, and agent navigation.
 2. `products_json`: A precise JSON array of products/services with rich data.
 
+ANTI-HALLUCINATION PROTOCOL: You are analyzing real B2B websites. DO NOT guess, estimate, or invent prices. DO NOT assume USD ($) if the context is European (e.g., Germany). If exact numerical prices are NOT explicitly written in the provided text (e.g., because they are hidden behind Javascript or dynamic sliders), you MUST set the 'pricing' field to 'Data not rendered in raw HTML (Requires JS)'.
+If explicit pricing is missing, you MUST lower the 'confidence_score' to 0.4 or lower. In the 'data_gaps' field, explicitly state: 'Pricing tables blocked by Javascript/Bot-Protection. Manual verification required.'.
+
 Adhere to this schema for `products_json` items:
 {
   "name": "Product Name",
   "description": "Rich description",
-  "pricing": "Nested object (e.g. {'Brands': '$500', 'Agencies': '$900'}) or standard string",
+  "pricing": "Nested object (e.g. {'Brands': '500€', 'Agencies': '900€'}) or standard string",
   "confidence_score": 0.95,
   "data_gaps": "E.g., 'Agency pricing missing'"
 }
 Return raw JSON object with keys "llms_txt" and "products_json". NO MARKDOWN BACKTICKS."""
+
+                MAX_CHARS = 350000
+                if len(aggregated_text) > MAX_CHARS:
+                    aggregated_text = aggregated_text[:MAX_CHARS] + "\n\n[SYSTEM WARNING: CONTENT TRUNCATED DUE TO LENGTH LIMITS]"
 
                 user_prompt = f"Website Content:\n\n{aggregated_text}"
 
