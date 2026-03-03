@@ -17,7 +17,6 @@ def get_openai_client():
 
 def extract_links(markdown_text, base_url):
     """Extracts internal HTTP/HTTPS links from markdown text."""
-    # Matches markdown links [text](url)
     link_pattern = re.compile(r'\[.*?\]\((.*?)\)')
     links = link_pattern.findall(markdown_text)
     
@@ -26,17 +25,13 @@ def extract_links(markdown_text, base_url):
     
     for link in links:
         link = link.strip()
-        # Ignore obvious non-http links and anchors
         if link.startswith(('mailto:', 'tel:', '#')):
             continue
             
-        # Resolve relative URLs
         full_url = urljoin(base_url, link)
         parsed_url = urlparse(full_url)
         
-        # Only keep HTTP/HTTPS links belonging to the same domain (internal links)
         if parsed_url.scheme in ('http', 'https') and parsed_url.netloc == base_domain:
-            # Normalize URL by removing fragment
             clean_url = parsed_url._replace(fragment='').geturl()
             internal_links.add(clean_url)
             
@@ -45,51 +40,191 @@ def extract_links(markdown_text, base_url):
 
 st.set_page_config(
     page_title="SynqNode | AI Visibility Infrastructure",
-    page_icon="⚡",
-    layout="centered"
+    layout="wide",
+    initial_sidebar_state="collapsed"
 )
 
+# Define Theme Colors (Permanent Light Mode)
+bg_color = "#F8FAFC"
+text_color = "#0F172A"
+card_bg = "#FFFFFF"
+sub_text = "#64748B"
+border_color = "rgba(0, 0, 0, 0.1)"
+btn_prim_bg = "#0F172A"
+btn_prim_text = "#FFFFFF"
+btn_sec_bg = "#FFFFFF"
+btn_sec_text = "#0F172A"
+btn_sec_border = "rgba(0, 0, 0, 0.2)"
+btn_sec_hover_bg = "rgba(0, 0, 0, 0.05)"
+metric_lbl = "#94A3B8"
+input_bg = "#FFFFFF"
+input_border = "rgba(0, 0, 0, 0.2)"
+
 # 1. Custom CSS
-st.markdown("""
+st.markdown(f"""
     <style>
-        #MainMenu {visibility: hidden;}
-        footer {visibility: hidden;}
-        header {visibility: hidden;}
+        #MainMenu {{visibility: hidden;}}
+        footer {{visibility: hidden;}}
+        header {{visibility: hidden;}}
         
-        /* Optional: make the main container a bit more sleek */
-        .block-container {
-            padding-top: 2rem !important;
-            padding-bottom: 2rem !important;
-        }
+        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap');
         
-        /* Tweak the primary button to look more like a SaaS CTA */
-        .stButton>button[data-testid="baseButton-primary"] {
-            width: 100%;
-            border-radius: 6px;
+        .stApp {{
+            background-color: {{bg_color}};
+            color: {{text_color}};
+            font-family: 'Inter', sans-serif;
+            transition: background-color 0.3s ease, color 0.3s ease;
+        }}
+        
+        .block-container {{
+            padding-top: 4rem !important;
+            padding-bottom: 6rem !important;
+            max-width: 1000px;
+        }}
+
+        /* Top Nav / Logo */
+        .nav-logo {{
+            font-size: 1.5rem;
+            font-weight: 800;
+            letter-spacing: -0.03em;
+            color: {{text_color}};
+            margin-bottom: 4rem;
+        }}
+
+        /* Buttons styles targeting data-testid or kind */
+        button[data-testid="baseButton-primary"], 
+        button[data-testid="stBaseButton-primary"], 
+        button[kind="primary"] {{
+            background-color: {{btn_prim_bg}} !important;
+            color: {{btn_prim_text}} !important;
+            border: none;
+            border-radius: 8px !important;
+            font-weight: 600 !important;
+            padding: 0.75rem 2rem !important;
+            font-size: 1rem !important;
+            height: 48px !important;
+            letter-spacing: -0.01em !important;
+            transition: all 0.2s ease !important;
+        }}
+        button[data-testid="baseButton-primary"]:hover, 
+        button[data-testid="stBaseButton-primary"]:hover, 
+        button[kind="primary"]:hover {{
+            transform: translateY(-2px) !important;
+            opacity: 0.9 !important;
+            box-shadow: 0 4px 12px rgba(0,0,0,0.1) !important;
+        }}
+        
+        button[data-testid="baseButton-secondary"], 
+        button[data-testid="stBaseButton-secondary"], 
+        button[kind="secondary"] {{
+            background-color: {{btn_sec_bg}} !important;
+            color: {{btn_sec_text}} !important;
+            border: 1px solid {{btn_sec_border}} !important;
+            border-radius: 8px !important;
+            font-weight: 500 !important;
+            padding: 0.75rem 2rem !important;
+            font-size: 1rem !important;
+            height: 48px !important;
+            letter-spacing: -0.01em !important;
+            transition: all 0.2s ease !important;
+        }}
+        button[data-testid="baseButton-secondary"]:hover, 
+        button[data-testid="stBaseButton-secondary"]:hover, 
+        button[kind="secondary"]:hover {{
+            border-color: {{text_color}} !important;
+            background-color: {{btn_sec_hover_bg}} !important;
+        }}
+        
+        /* Inputs */
+        div[data-baseweb="input"] {{
+            background-color: {{input_bg}} !important;
+            border: 1px solid {{input_border}} !important;
+            border-radius: 8px !important;
+            height: 48px;
+        }}
+        div[data-baseweb="input"] input {{
+            color: {{text_color}} !important;
+            font-weight: 500;
+        }}
+
+        /* Typography */
+        .app-title {{
+            font-weight: 800;
+            font-size: 3rem;
+            line-height: 1.1;
+            letter-spacing: -0.04em;
+            color: {{text_color}};
+            margin-bottom: 1rem;
+            text-align: center;
+        }}
+        .app-subtitle {{
+            font-weight: 400;
+            font-size: 1.15rem;
+            color: {{sub_text}};
+            max-width: 650px;
+            margin: 0 auto 3rem auto;
+            line-height: 1.6;
+            letter-spacing: -0.01em;
+            text-align: center;
+        }}
+
+        /* Footer/Legal */
+        .footer-text {{
+            color: {{sub_text}};
+            font-size: 0.85rem;
+        }}
+        .streamlit-expanderHeader {{
+            color: {{sub_text}} !important;
+            font-weight: 500 !important;
+            border-bottom: 1px solid {{border_color}} !important;
+        }}
+        .streamlit-expanderContent {{
+            color: {{sub_text}};
+            background-color: {{bg_color}};
+        }}
+        
+        /* Tabs and Metric overrides */
+        [data-testid="stMetricLabel"] {{
+            color: {{metric_lbl}} !important;
             font-weight: 600;
-        }
+            letter-spacing: 0.05em;
+            text-transform: uppercase;
+        }}
+        [data-testid="stMetricValue"] {{
+            color: {{text_color}} !important;
+            font-weight: 700;
+        }}
+        /* Keep markdown text area readable in light mode */
+        textarea {{
+            background-color: {{input_bg}} !important;
+            color: {{text_color}} !important;
+            border: 1px solid {{input_border}} !important;
+        }}
     </style>
-""", unsafe_allow_html=True)
+""".replace("{{", "{").replace("}}", "}"), unsafe_allow_html=True)
 
-# 2. Professional Copywriting (Hero Section)
-st.markdown("<h1 style='text-align: center; font-weight: 700; margin-bottom: 0;'>SynqNode.</h1>", unsafe_allow_html=True)
-st.markdown("<h3 style='text-align: center; font-weight: 400; color: #666; margin-top: 0;'>The Infrastructure for the Agentic Web.</h3>", unsafe_allow_html=True)
+# Navigation
+col_logo, col_nav_btn = st.columns([5, 1])
+with col_logo:
+    st.markdown("<div class='nav-logo'>SynqNode</div>", unsafe_allow_html=True)
 
+# 2. Professional Copywriting
+st.markdown("<div class='app-title'>Infrastructure for the Agentic Web.</div>", unsafe_allow_html=True)
 st.markdown("""
-<p style="text-align: center; max-width: 600px; margin: 1rem auto; font-size: 1.1rem; color: #444;">
-Transform your standard website into a machine-readable data layer. Ensure your products, pricing, and services are perfectly understood by ChatGPT, Perplexity, and autonomous AI agents.
-</p>
+<div class='app-subtitle'>
+    Transform your standard website into a machine-readable data layer. Ensure your products, pricing, and services are perfectly understood by autonomous AI agents.
+</div>
 """, unsafe_allow_html=True)
 
-st.write("")
-
-# Use columns to create a centered, sleek search bar feel
-col1, col2, col3 = st.columns([1, 4, 1])
-with col2:
+# Search Bar Input Area
+st.markdown("<br>", unsafe_allow_html=True)
+col_input1, col_input2 = st.columns([3, 1], gap="medium")
+with col_input1:
     url_input = st.text_input("Target URL", placeholder="https://example.com", label_visibility="collapsed")
-    generate_pressed = st.button("Generate AI Interface", type="primary", use_container_width=True)
+with col_input2:
+    generate_pressed = st.button("Generate SDK", type="primary", use_container_width=True)
+st.markdown("<br><br>", unsafe_allow_html=True)
 
-st.write("---")
 
 if generate_pressed:
     if not url_input.strip():
@@ -98,19 +233,17 @@ if generate_pressed:
         if not url_input.startswith("http"):
             url_input = "https://" + url_input
 
-        # 3. Pipeline Status Updates (Professional Tone)
-        with st.status("Initializing SynqNode Data Pipeline...", expanded=True) as status:
+        # 3. Pipeline Status Updates
+        with st.status("Initializing SynqNode Pipeline...", expanded=True) as status:
             try:
-                # --- Step 1: The Base Crawl & Link Extraction ---
-                status.update(label="Step 1: Ingesting base domain architecture...", state="running")
+                # --- Step 1 ---
+                status.update(label="01 / INGEST: Analyzing base domain architecture...", state="running")
                 jina_url = f"https://r.jina.ai/{url_input}"
                 response = requests.get(jina_url)
                 response.raise_for_status()
                 base_text = response.text
                 
                 status.write("Base domain ingested successfully.")
-                
-                # Extract links
                 status.write("Mapping internal endpoint architecture...")
                 internal_links = extract_links(base_text, url_input)
                 status.write(f"Isolated {len(internal_links)} internal routes.")
@@ -119,12 +252,11 @@ if generate_pressed:
                 selected_urls = []
 
                 if internal_links:
-                    # --- Step 2: The "Scout" LLM Pass ---
-                    status.update(label="Step 2: AI Scout idenitifying high-value commercial and structural endpoints...", state="running")
+                    # --- Step 2 ---
+                    status.update(label="02 / SCOUT: Identifying commercial endpoints...", state="running")
                     
-                    scout_system_prompt = """You are a web routing assistant. Look at this list of URLs from a company's website. Select a maximum of 6 URLs that are absolutely strictly necessary to understand the company's core products, services, pricing, and audience segments. Prioritize URLs containing words like pricing, preise, products, leistungen, about, or services. Additionally, specifically hunt for audience-specific endpoints (e.g., '/agencies', '/enterprise', '/solutions') and subpages that might contain pricing toggles or tiered service descriptions. Return ONLY a JSON array of the selected URL strings. Do not include markdown formatting or backticks around the JSON array."""
-                    
-                    scout_user_prompt = f"Here are the internal URLs found on the site:\n{json.dumps(internal_links, indent=2)}\n\nPlease select up to 6 of the most relevant URLs for understanding products, services, segments, and pricing based on the instructions."
+                    scout_system_prompt = """You are a web routing assistant. Look at this list of URLs. Select a maximum of 6 URLs strictly necessary to understand products, services, pricing, and segments. Prioritize '/agencies', '/enterprise', '/pricing'. Return ONLY a JSON array of selected URL strings. No markdown."""
+                    scout_user_prompt = f"Internal URLs:\n{json.dumps(internal_links, indent=2)}\n\nSelect up to 6 critical URLs."
                     
                     scout_completion = client.chat.completions.create(
                         model="gpt-4o-mini",
@@ -145,59 +277,48 @@ if generate_pressed:
                         selected_urls = json.loads(scout_response)
                         if not isinstance(selected_urls, list):
                             selected_urls = []
-                        # Ensure we convert relative paths or partial URLs correctly back to absolute URLs before crawling
                         selected_urls = [urljoin(url_input, url) for url in selected_urls[:6]]
-                        status.write(f"Scout prioritized {len(selected_urls)} critical endpoints: {', '.join(selected_urls)}")
+                        status.write(f"Prioritized endpoints: {', '.join(selected_urls)}")
                     except json.JSONDecodeError:
-                        status.write("Warning: Failed to parse Scout response. Proceeding with base architecture only.")
+                        status.write("Warning: Failed to parse Scout response. Proceeding with base architecture.")
                         selected_urls = []
-
                 else:
                     status.write("No internal commercial routes found to prioritize.")
 
-                # --- Step 3: Deep Crawl & Final Generation ---
-                status.update(label="Step 3: Deep-crawling selected endpoints via secure Jina API...", state="running")
-                
+                # --- Step 3 ---
+                status.update(label="03 / CRAWL: Deep-crawling selected endpoints...", state="running")
                 urls_to_crawl = [url_input] + [url for url in selected_urls if url != url_input]
-                
                 aggregated_text = f"--- Content from {url_input} ---\n\n{base_text}"
                 
                 for i, url in enumerate(urls_to_crawl[1:], start=1):
-                    status.write(f"Synchronizing endpoint {i}/{len(urls_to_crawl)-1}: {url}... (Rate limit throttle active)")
+                    status.write(f"Synchronizing endpoint {i}/{len(urls_to_crawl)-1}: {url}...")
                     time.sleep(2)
                     try:
                         resp = requests.get(f"https://r.jina.ai/{url}")
                         resp.raise_for_status()
                         aggregated_text += f"\n\n--- Content from {url} ---\n\n{resp.text}"
                     except Exception as e:
-                        status.write(f"Warning: Endpoint synchronization failed for {url}: {e}")
+                        status.write(f"Warning: Endpoint synchronization failed for {url}")
                         
-                # --- Step 4: Generating final AI formats ---
-                status.update(label="Step 4: Compiling Agent-Ready data structures (llms.txt & JSON)...", state="running")
+                # --- Step 4 ---
+                status.update(label="04 / COMPILE: Generating Agent-Ready JSON...", state="running")
 
-                # The original generation prompt
-                system_prompt = """You are an expert at analyzing website content and converting it into two specific formats for Search Agent Optimization.
-Based on the provided website content, you must generate two items:
-1. A markdown-formatted string meant for an `llms.txt` file that explains the structure of the business, its core offerings, and guides an AI agent on how to use this site.
-2. A very precise list of products/services mentioned, including rich descriptions, multi-audience segment data, and structured pricing details.
+                system_prompt = """You are an expert at parsing web content into structured SAO formats.
+Generate two items from the content:
+1. `llms_txt`: A markdown string explaining company structure, offerings, and agent navigation.
+2. `products_json`: A precise JSON array of products/services with rich data.
 
-Your response MUST be a valid JSON object with exactly two keys:
-- "llms_txt": A string containing the markdown-formatted content for llms.txt.
-- "products_json": A JSON array of objects representing the products/services found. 
-
-For EACH product/service inside `products_json`, strictly adhere to this schema:
+Adhere to this schema for `products_json` items:
 {
   "name": "Product Name",
-  "description": "Rich description of the product or service.",
-  "pricing": "Nested object representing segment-specific pricing if it exists (e.g., {'Brands': '$500', 'Agencies': '$900'}) or a standard description of pricing. Try to format hierarchically when multiple tiers or segments are detected.",
-  "confidence_score": "Float between 0.0 and 1.0 representing how certain you are about the extracted data based purely on the text provided.",
-  "data_gaps": "A string or list describing what missing information was not found on the page (e.g., 'Agency pricing not explicitly found on page')."
+  "description": "Rich description",
+  "pricing": "Nested object (e.g. {'Brands': '$500', 'Agencies': '$900'}) or standard string",
+  "confidence_score": 0.95,
+  "data_gaps": "E.g., 'Agency pricing missing'"
 }
+Return raw JSON object with keys "llms_txt" and "products_json". NO MARKDOWN BACKTICKS."""
 
-Do NOT include any markdown code block backticks (like ```json) in your final response. Just return the raw JSON string that can be parsed directly.
-"""
-
-                user_prompt = f"Aggregated Website Content:\n\n{aggregated_text}"
+                user_prompt = f"Website Content:\n\n{aggregated_text}"
 
                 completion = client.chat.completions.create(
                     model="gpt-4o-mini",
@@ -208,103 +329,79 @@ Do NOT include any markdown code block backticks (like ```json) in your final re
                     response_format={"type": "json_object"}
                 )
 
-                result_text = completion.choices[0].message.content
-                result_json = json.loads(result_text)
-
-                st.session_state.llms_txt_content = result_json.get("llms_txt", "Error generating llms.txt content.")
+                result_json = json.loads(completion.choices[0].message.content)
+                st.session_state.llms_txt_content = result_json.get("llms_txt", "Error")
                 
-                # Format products_json as a pretty string
                 products_data = result_json.get("products_json", [])
                 if isinstance(products_data, str):
                     try:
                         st.session_state.products_json_content = json.dumps(json.loads(products_data), indent=4, ensure_ascii=False)
-                    except json.JSONDecodeError:
+                    except:
                         st.session_state.products_json_content = products_data
                 else:
                     st.session_state.products_json_content = json.dumps(products_data, indent=4, ensure_ascii=False)
 
-                # Store the length of urls crawled for the metrics dashboard
                 st.session_state.pages_scouted_count = len(urls_to_crawl)
+                status.update(label="05 / DEPLOY: Pipeline Complete.", state="complete", expanded=False)
 
-                status.update(label="SynqNode Pipeline Complete.", state="complete", expanded=False)
-
-            except requests.exceptions.RequestException as e:
-                status.update(label="Ingestion Protocol Error", state="error", expanded=True)
-                st.error(f"Failed to synchronize via Jina API. Error: {e}")
             except Exception as e:
-                status.update(label="Compilation Error", state="error", expanded=True)
-                st.error(f"An error occurred in compilation. Verification required for OPENAI_API_KEY. Details: {e}")
+                status.update(label="Protocol Error", state="error", expanded=True)
+                st.error(f"Execution failed. Details: {e}")
 
-# 4. The Results Dashboard (SaaS Metrics) & Display
+# 4. Results Dashboard
 if "llms_txt_content" in st.session_state and "products_json_content" in st.session_state:
     
-    # Render the Metrics Dashboard
+    st.markdown(f"<div style='border: 1px solid {{border_color}}; border-radius: 12px; padding: 2rem; background-color: {{card_bg}}; margin-bottom: 2rem;'>".replace("{{", "{").replace("}}", "}"), unsafe_allow_html=True)
     metric_col1, metric_col2, metric_col3 = st.columns(3)
     with metric_col1:
-        pages_count = st.session_state.get('pages_scouted_count', 1)
-        st.metric("Endpoints Scouted", f"{pages_count}")
+        st.metric("Endpoints Scouted", f"{st.session_state.get('pages_scouted_count', 1)}")
     with metric_col2:
         st.metric("AI Visibility Ready", "Yes", "Optimized")
     with metric_col3:
         st.metric("Data Format", "Markdown & JSON")
-        
-    st.write("---")
+    st.markdown("</div>", unsafe_allow_html=True)
 
     tab_llms, tab_products = st.tabs(["llms.txt", "products.json"])
 
     with tab_llms:
         st.text_area("llms.txt content", value=st.session_state.llms_txt_content, height=400, label_visibility="collapsed")
-        st.download_button(
-            label="Download llms.txt",
-            data=st.session_state.llms_txt_content,
-            file_name="llms.txt",
-            mime="text/markdown",
-            key="download_llms",
-            type="primary"
-        )
+        st.download_button("Download llms.txt", data=st.session_state.llms_txt_content, file_name="llms.txt", mime="text/markdown", type="primary")
 
     with tab_products:
         st.text_area("products.json content", value=st.session_state.products_json_content, height=400, label_visibility="collapsed")
-        st.download_button(
-            label="Download products.json",
-            data=st.session_state.products_json_content,
-            file_name="products.json",
-            mime="application/json",
-            key="download_products",
-            type="primary"
-        )
-# --- FOOTER & RECHTLICHES ---
-st.write("---")
-st.markdown("""
-<div style='text-align: center; color: #888; font-size: 0.85rem; line-height: 1.5; margin-bottom: 1rem;'>
-    SynqNode AI Visibility Infrastructure
-</div>
-""", unsafe_allow_html=True)
+        st.download_button("Download products.json", data=st.session_state.products_json_content, file_name="products.json", mime="application/json", type="primary")
 
-# Wir nutzen Expander, damit die Texte das Design nicht stören, aber rechtlich vorhanden sind
-col_imp, col_dat = st.columns(2)
+st.markdown("<br><br><br>", unsafe_allow_html=True)
 
-with col_imp:
+# 5. Footer (Legal)
+st.markdown(f"<hr style='border-top: 1px solid {{border_color}};'>".replace("{{", "{").replace("}}", "}"), unsafe_allow_html=True)
+
+col_footer1, col_footer2 = st.columns([1, 1])
+with col_footer1:
+    st.markdown("""
+    <div class='footer-text'>
+        <p><strong>© 2026 SynqNode Technologies.</strong></p>
+        <p>Built for the European Data Economy.</p>
+    </div>
+    """, unsafe_allow_html=True)
+
+with col_footer2:
     with st.expander("Impressum"):
         st.markdown("""
-        **Impressum**  
-        Angaben gemäß § 5 TMG:
-        
-        **Name:** Valentin Weiss  
-        **Adresse:** Klosestraße 13, 76137 Karlsruhe  
-        
-        **Kontakt:**  
-        E-Mail: valentin_weiss@gmx.de  
-        """)
-
-with col_dat:
+        <div class='footer-text'>
+            <b>Impressum</b><br>
+            Angaben gemäß § 5 TMG:<br><br>
+            <b>Name:</b> Valentin Weiss<br>
+            <b>Adresse:</b> Klosestraße 13, 76137 Karlsruhe<br><br>
+            <b>Kontakt:</b><br>
+            E-Mail: valentin_weiss@gmx.de
+        </div>
+        """, unsafe_allow_html=True)
     with st.expander("Datenschutz"):
         st.markdown("""
-        **Datenschutzerklärung (Kurzfassung)** Wir nehmen den Schutz Ihrer Daten ernst. Diese App wird über Streamlit Community Cloud gehostet. 
-        Bei der Nutzung unseres Scanners verarbeiten wir die von Ihnen eingegebene URL. 
-        Die Inhalte der Ziel-URL werden über externe Dienstleister (Jina AI) ausgelesen und über die 
-        API von OpenAI in strukturierte Datenformate übersetzt. Wir speichern die generierten Ergebnisse 
-        (JSON/TXT) nicht dauerhaft auf unseren Servern, sondern stellen sie Ihnen lediglich zum direkten Download zur Verfügung.
-        
-        *[Hier den ausführlichen Text aus dem eRecht24-Generator einfügen]*
-        """)
+        <div class='footer-text'>
+            <b>Datenschutzerklärung</b><br><br>
+            Processed via secure APIs (e.g. OpenAI/Jina API) to generate structured files. No permanent storage or retention of scraped URLs or their content on SynqNode servers.<br><br>
+            <i>[Hier fügen Sie den vollständigen Text Ihres Datenschutz-Generators, z.B. von eRecht24, ein.]</i>
+        </div>
+        """, unsafe_allow_html=True)
